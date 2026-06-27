@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "behavioral-digital-twin"
+version = "0.1.0"
+description = "An AI system that learns and predicts an individual's decision-making patterns."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "torch",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "streamlit",
+    "plotly",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "hypothesis",
+    "httpx",
+]
+
+[tool.setuptools]
+packages = [
+    "data",
+    "features",
+    "models",
+    "personalization",
+    "api",
+    "demos",
+    "dashboard",
+    "mlops",
+]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-ra"

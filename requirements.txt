@@ -1,0 +1,15 @@
+numpy
+pandas
+scikit-learn
+torch
+fastapi
+uvicorn
+pydantic
+streamlit
+plotly
+pytest
+hypothesis
+httpx
+python-dotenv==1.0.1
+scipy
+statsmodels

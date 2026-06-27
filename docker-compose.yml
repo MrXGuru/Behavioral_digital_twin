@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  behavioral-twin:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount these files/directories so data persists across container restarts
+      - ./digital_twin.db:/app/digital_twin.db
+      - ./_profiles.json:/app/_profiles.json
+      - ./models:/app/models
+    environment:
+      # We use ollamafreeapi, so no local Ollama is required.
+      # If you use a real GEMINI_API_KEY, uncomment the line below:
+      # - GEMINI_API_KEY=your_api_key_here
+      - ENVIRONMENT=production
