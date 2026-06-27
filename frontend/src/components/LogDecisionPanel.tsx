@@ -6,7 +6,7 @@
 import { useState, useEffect, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Star, CheckCircle, Zap, Loader2, Sparkles, Target, ListTodo, ShoppingCart, Database } from 'lucide-react'
-import { logDecision } from '../hooks/useApi'
+import { logDecision, predictNext } from '../hooks/useApi'
 
 interface LogDecisionPanelProps {
   userId: string
@@ -58,6 +58,7 @@ const LogDecisionPanel = memo(function LogDecisionPanel({ userId, onLogged, tota
   const [success, setSuccess] = useState<string | null>(null)
   
   const [suggestions, setSuggestions] = useState<any[]>([])
+  const [loadingPredictions, setLoadingPredictions] = useState(true)
   const [manualInput, setManualInput] = useState('')
   const [manualDomain, setManualDomain] = useState('focus')
   const [manualLocation, setManualLocation] = useState('home')
@@ -66,9 +67,45 @@ const LogDecisionPanel = memo(function LogDecisionPanel({ userId, onLogged, tota
   const [manualStress, setManualStress] = useState('medium')
   const [showAdvanced, setShowAdvanced] = useState(false)
 
-  // Initialize time-based fallback suggestions
+  // Fetch real predictions
   useEffect(() => {
-    setSuggestions(getFallbackSuggestions())
+    let mounted = true
+    const fetchPredictions = async () => {
+      setLoadingPredictions(true)
+      try {
+        const results = await Promise.all(
+          DOMAINS.map(async (d) => {
+            try {
+              const res = await predictNext(userId, d.id)
+              return {
+                label: res.predicted,
+                domain: d.id,
+                decision: res.predicted.toLowerCase().replace(/ /g, '_'),
+                xp: Math.round(res.confidence * 50) + 10,
+                confidence: res.confidence,
+                icon: <d.icon className="w-6 h-6 text-indigo-400" />
+              }
+            } catch {
+              return null
+            }
+          })
+        )
+        const valid = results.filter(Boolean)
+        if (mounted) {
+          if (valid.length > 0) {
+            setSuggestions(valid)
+          } else {
+            setSuggestions(getFallbackSuggestions())
+          }
+        }
+      } catch (e) {
+        if (mounted) setSuggestions(getFallbackSuggestions())
+      } finally {
+        if (mounted) setLoadingPredictions(false)
+      }
+    }
+    fetchPredictions()
+    return () => { mounted = false }
   }, [userId])
 
   const handleSuggestionLog = async (item: any) => {
@@ -177,52 +214,76 @@ const LogDecisionPanel = memo(function LogDecisionPanel({ userId, onLogged, tota
         </div>
       </div>
 
-      {/* Quick Suggestions */}
+      {/* Live AI Predictions */}
       <div className="relative z-10 flex-1">
         <div className="flex items-center gap-2 mb-4">
           <Sparkles className="w-4 h-4 text-indigo-400" />
-          <h4 className="text-sm font-bold text-white">Quick Suggestions</h4>
+          <h4 className="text-sm font-bold text-white">Live AI Recommendations</h4>
         </div>
         
-        <div className="space-y-3">
-          <AnimatePresence>
-            {suggestions.map((action, i) => (
-              <motion.button
-                key={`${action.domain}-${action.label}`}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.1 }}
-                onClick={() => handleSuggestionLog(action)}
-                disabled={logging !== null}
-                className={`w-full group relative z-20 cursor-pointer flex items-center justify-between p-4 rounded-xl border text-left transition-all duration-300 ${
-                  logging === action.label 
-                    ? 'bg-indigo-500/20 border-indigo-500/50' 
-                    : 'bg-[#1f1f1f] border-[#ffffff14] hover:bg-[#2a2a2a] hover:border-[#ffffff2a]'
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`p-2 rounded-lg border bg-[#ffffff0a] border-[#ffffff14]`}>
-                    {logging === action.label ? (
-                      <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
-                    ) : (
-                      <div className="text-[#ededed]">{action.icon}</div>
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-[#ededed] leading-tight">{action.label}</span>
+        {loadingPredictions ? (
+          <div className="flex flex-col items-center justify-center py-12 border border-[#ffffff0a] rounded-xl bg-[#ffffff05]">
+            <Loader2 className="w-8 h-8 text-indigo-400 animate-spin mb-3" />
+            <p className="text-sm text-[#a1a1aa]">Analyzing current context...</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <AnimatePresence>
+              {[...suggestions].sort((a,b) => (b.confidence||0) - (a.confidence||0)).map((action, i) => (
+                <motion.button
+                  key={`${action.domain}-${action.label}`}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  onClick={() => handleSuggestionLog(action)}
+                  disabled={logging !== null}
+                  className={`w-full group relative z-20 cursor-pointer flex items-center justify-between p-4 rounded-xl border text-left transition-all duration-300 ${
+                    logging === action.label 
+                      ? 'bg-indigo-500/20 border-indigo-500/50' 
+                      : i === 0 
+                        ? 'bg-gradient-to-br from-[#1f1f1f] to-[#141414] border-indigo-500/30 hover:border-indigo-500/60 shadow-[0_0_15px_rgba(99,102,241,0.05)] hover:shadow-[0_0_20px_rgba(99,102,241,0.1)]'
+                        : 'bg-[#1f1f1f] border-[#ffffff14] hover:bg-[#2a2a2a] hover:border-[#ffffff2a]'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`p-2 rounded-lg border ${i === 0 ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-[#ffffff0a] border-[#ffffff14]'}`}>
+                      {logging === action.label ? (
+                        <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
+                      ) : (
+                        <div className={i === 0 ? "text-indigo-400" : "text-[#ededed]"}>{action.icon}</div>
+                      )}
                     </div>
-                    <span className="text-xs text-[#a1a1aa] capitalize flex items-center gap-1 mt-0.5">
-                      {action.domain} Action
-                      <span className="inline-block w-1 h-1 rounded-full bg-[#ffffff2a]" />
-                      <Zap className="w-3 h-3 text-amber-400 fill-amber-400" /> {action.xp} XP
-                    </span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-[#ededed] leading-tight">{action.label}</span>
+                        {i === 0 && <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-400/10 px-1.5 py-0.5 rounded">Best Match</span>}
+                      </div>
+                      <span className="text-xs text-[#a1a1aa] capitalize flex items-center gap-1 mt-0.5">
+                        {action.domain} Action
+                        <span className="inline-block w-1 h-1 rounded-full bg-[#ffffff2a]" />
+                        <Zap className="w-3 h-3 text-amber-400 fill-amber-400" /> {action.xp} XP
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </motion.button>
-            ))}
-          </AnimatePresence>
-        </div>
+                  
+                  {action.confidence && (
+                    <div className="flex flex-col items-end gap-1.5 min-w-[80px]">
+                      <span className="text-xs font-bold text-white">{Math.round(action.confidence * 100)}% Match</span>
+                      <div className="h-1.5 w-full bg-[#0a0a0a] rounded-full overflow-hidden border border-[#ffffff0a]">
+                        <motion.div 
+                          className={`h-full rounded-full ${i === 0 ? 'bg-indigo-500' : 'bg-[#ffffff3a]'}`}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${action.confidence * 100}%` }}
+                          transition={{ duration: 1, ease: "easeOut" }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </motion.button>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
       </div>
 
       {/* Manual Input */}
