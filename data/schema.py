@@ -47,6 +47,7 @@ class Domain(str, Enum):
 
     FOCUS = "focus"
     TASK = "task"
+    PURCHASE = "purchase"
 
 
 class DayType(str, Enum):
@@ -73,6 +74,7 @@ class TimeOfDay(str, Enum):
 DOMAIN_OPTIONS: dict[Domain, tuple[str, ...]] = {
     Domain.FOCUS: ("pomodoro", "flow_state", "light_work", "admin"),
     Domain.TASK: ("deep_work", "email", "meeting", "break"),
+    Domain.PURCHASE: ("coffee", "snack", "lunch", "none"),
 }
 
 
