@@ -165,14 +165,8 @@ class TwinService:
             report = evaluate_models(records, domain)
             reports.append(report.as_dict())
 
-            train, _ = time_based_split(dom_records, 0.2)
-            pipe = FeaturePipeline(domain).fit(train)
-            fm = pipe.transform(train)
-            opts = list(options(domain))
-            if report.winner == "sequence":
-                model = SequenceModel(opts).fit(fm.X, fm.seq, fm.y)
-            else:
-                model = BaselineModel(opts).fit(fm.X, fm.seq, fm.y)
+            pipe = report.winning_pipe
+            model = report.winning_model
 
             dm = _DomainModel(domain)
             dm.pipe, dm.model, dm.model_name = pipe, model, report.winner

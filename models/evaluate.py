@@ -38,6 +38,8 @@ class ComparisonReport:
     sequence: Metrics
     winner: str = ""
     rationale: str = ""
+    winning_model: object = None
+    winning_pipe: object = None
 
     def as_dict(self) -> dict:
         return {"domain": self.domain, "baseline": self.baseline.as_dict(),
@@ -132,8 +134,10 @@ def evaluate_models(
         winner = "sequence"
         rationale = ("Sequence model better captures order-dependent habit patterns "
                      "(higher accuracy / better calibration on the held-out tail).")
+        winning_model = sequence
     else:
         winner = "baseline"
         rationale = ("Baseline matches or beats the sequence model here; with limited "
                      "data the simpler model generalizes better and is better calibrated.")
-    return ComparisonReport(dom.value, b_metrics, s_metrics, winner, rationale)
+        winning_model = baseline
+    return ComparisonReport(dom.value, b_metrics, s_metrics, winner, rationale, winning_model=winning_model, winning_pipe=pipe)

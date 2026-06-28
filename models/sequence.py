@@ -55,7 +55,7 @@ class SequenceModel(DecisionModel):
 
     name = "sequence"
 
-    def __init__(self, options: list[str], epochs: int = 50, hidden: int = 16) -> None:
+    def __init__(self, options: list[str], epochs: int = 15, hidden: int = 16) -> None:
         super().__init__(options)
         self.epochs = epochs
         self.hidden = hidden
