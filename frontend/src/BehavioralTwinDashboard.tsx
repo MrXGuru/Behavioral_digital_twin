@@ -8,7 +8,7 @@
  */
 import { useState, useEffect, memo, Component, type ReactNode, type ErrorInfo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Brain, Loader2, AlertCircle, Download, LogOut, Share2, User, Trash2, Bell, Search, Cloud, CloudLightning, CheckCircle2 } from 'lucide-react'
+import { Brain, Loader2, AlertCircle, Download, LogOut, User, Trash2, Bell, Search, Cloud, CloudLightning, CheckCircle2 } from 'lucide-react'
 import AuthScreen from './components/auth/AuthScreen'
 
 import { useDashboard, API_BASE, deleteTwin } from './hooks/useApi'
