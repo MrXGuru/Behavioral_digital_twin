@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { motion, useSpring } from 'framer-motion'
 
 export default function BackgroundEffects() {
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
 
   // Use springs for ultra-smooth cursor tracking
   const mouseX = useSpring(0, { stiffness: 100, damping: 30 })
@@ -12,7 +11,6 @@ export default function BackgroundEffects() {
     const handleMouseMove = (e: MouseEvent) => {
       mouseX.set(e.clientX)
       mouseY.set(e.clientY)
-      setMousePos({ x: e.clientX, y: e.clientY })
     }
     window.addEventListener('mousemove', handleMouseMove)
     return () => window.removeEventListener('mousemove', handleMouseMove)

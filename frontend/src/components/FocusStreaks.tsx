@@ -20,7 +20,7 @@ type Point = { x: number, y: number }
 type Particle = { x: number, y: number, vx: number, vy: number, life: number, color: string }
 type FloatingText = { x: number, y: number, text: string, life: number }
 
-const FocusStreaks = memo(function FocusStreaks({ heatmap, xp, level, totalLogs }: FocusStreaksProps) {
+const FocusStreaks = memo(function FocusStreaks({ heatmap, xp, level }: FocusStreaksProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const { playSound } = useSound()
