@@ -67,7 +67,7 @@ DEFAULT_DOMAINS = ["focus", "task", "purchase"]
 #: enough to produce meaningful predictions.  Below this the API surfaces
 #: a data_maturity == "learning" state so the UI can display an honest
 #: "still learning" message instead of a polished-looking but unreliable result.
-DATA_MATURITY_THRESHOLD: int = 5
+DATA_MATURITY_THRESHOLD: int = 9
 
 
 def pretty(label: str) -> str:
@@ -160,7 +160,7 @@ class TwinService:
 
         for domain in self.domains:
             dom_records = [r for r in records if r.domain == domain]
-            if len(dom_records) < 5:
+            if len(dom_records) < DATA_MATURITY_THRESHOLD:
                 continue
             report = evaluate_models(records, domain)
             reports.append(report.as_dict())
@@ -465,7 +465,7 @@ class TwinService:
         """Retrain on the latest stored data; return status + metrics per domain."""
         records = self.store.load(user_id=user_id)
         dom_counts = {d: sum(1 for r in records if r.domain == d) for d in self.domains}
-        if all(c < 5 for c in dom_counts.values()):
+        if all(c < DATA_MATURITY_THRESHOLD for c in dom_counts.values()):
             return {"status": "skipped", "reason": "insufficient_data",
                     "lastSynced": _iso_z(datetime.now(timezone.utc))}
         reports = self.train(user_id)
@@ -597,7 +597,7 @@ class TwinService:
         records = self.store.load(user_id=target)
         dom_counts = {d: sum(1 for r in records if r.domain == d) for d in self.domains}
         # Too few records anywhere for a valid temporal split -> keep prior artifacts.
-        if all(c < 5 for c in dom_counts.values()):
+        if all(c < DATA_MATURITY_THRESHOLD for c in dom_counts.values()):
             return {"status": "skipped", "reason": "insufficient_data"}
 
         reports = self.train(target)

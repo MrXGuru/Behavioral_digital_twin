@@ -329,7 +329,7 @@ def log_decision(user_id: str, req: LogDecisionRequest):
 def data_maturity(user_id: str):
     """Return the data-maturity state for ``user_id``.
 
-    Below DATA_MATURITY_THRESHOLD (15) logged decisions the twin is in
+    Below DATA_MATURITY_THRESHOLD (9) logged decisions the twin is in
     "still learning" mode and predictions should not be trusted.
     The frontend uses this to show an honest onboarding state.
     """
@@ -668,7 +668,7 @@ def _local_chat_answer(user_id: str, question: str) -> str:
         decisions = dash.get("decisions", [])
         if not decisions:
             return (
-                "The twin hasn't made predictions yet — you need at least 15 decisions "
+                "The twin hasn't made predictions yet — you need at least 9 decisions "
                 "logged and then a retrain before predictions start."
             )
         hits = sum(1 for d in decisions if d.get("hit"))

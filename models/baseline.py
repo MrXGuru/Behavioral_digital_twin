@@ -36,7 +36,7 @@ class BaselineModel(DecisionModel):
     def fit(self, X: np.ndarray, seq: np.ndarray, y: list[str]) -> "BaselineModel":
         classes = sorted(set(y))
         self._classes = classes
-        if len(classes) < 2 or len(y) < 10:
+        if len(classes) < 2 or len(y) < 7:
             # Degenerate: use observed class frequencies as a constant prior.
             self._fallback_probs = self._prior_from_labels(y)
             self._clf = None

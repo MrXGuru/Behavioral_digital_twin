@@ -72,7 +72,7 @@ class SequenceModel(DecisionModel):
     # ------------------------------------------------------------------
     def fit(self, X: np.ndarray, seq: np.ndarray, y: list[str]) -> "SequenceModel":
         self._classes = sorted(set(y))
-        if len(self._classes) < 2 or len(y) < 10:
+        if len(self._classes) < 2 or len(y) < 7:
             self._fallback_probs = self._prior_from_labels(y)
             return self
 
@@ -128,7 +128,7 @@ class SequenceModel(DecisionModel):
         warnings.filterwarnings("ignore", category=ConvergenceWarning)
         
         self._mlp = MLPClassifier(hidden_layer_sizes=(self.hidden,), max_iter=self.epochs * 10,
-                                  random_state=42, early_stopping=True, n_iter_no_change=5)
+                                  random_state=42)
         try:
             self._mlp.fit(feat, y)
         except Exception:
