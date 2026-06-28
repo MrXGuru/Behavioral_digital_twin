@@ -20,7 +20,9 @@ try:  # optional heavy dependency
     import torch
     import torch.nn as nn
 
-    _TORCH = True
+    # Force fallback to sklearn to avoid PyTorch initialization overhead and 
+    # make training lightning fast on constrained environments like Render
+    _TORCH = False
 except Exception:  # pragma: no cover - exercised only when torch missing
     _TORCH = False
 
@@ -117,12 +119,18 @@ class SequenceModel(DecisionModel):
 
     def _fit_sklearn(self, X, seq, y):
         from sklearn.neural_network import MLPClassifier
-
-        feats = self._flatten(X, seq)
-        self._mlp = MLPClassifier(hidden_layer_sizes=(self.hidden,), max_iter=10,
-                                  random_state=0)
+        # Flatten the sequence: (batch, seq_len, step_dim) -> (batch, seq_len * step_dim)
+        seq_flat = seq.reshape(seq.shape[0], -1)
+        feat = np.hstack([seq_flat, X])
+        
+        from sklearn.exceptions import ConvergenceWarning
+        import warnings
+        warnings.filterwarnings("ignore", category=ConvergenceWarning)
+        
+        self._mlp = MLPClassifier(hidden_layer_sizes=(self.hidden,), max_iter=self.epochs * 10,
+                                  random_state=42, early_stopping=True, n_iter_no_change=5)
         try:
-            self._mlp.fit(feats, y)
+            self._mlp.fit(feat, y)
         except Exception:
             self._mlp = None
             self._fallback_probs = self._prior_from_labels(y)
