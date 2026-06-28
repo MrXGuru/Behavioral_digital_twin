@@ -34,8 +34,6 @@ packages = [
     "models",
     "personalization",
     "api",
-    "demos",
-    "dashboard",
     "mlops",
 ]
 

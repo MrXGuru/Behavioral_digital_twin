@@ -42,7 +42,7 @@ const CommandPalette = memo(function CommandPalette({ userId }: CommandPalettePr
   const inputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Toggle with Cmd+K or Ctrl+K
+  // Toggle with Cmd+K or Ctrl+K or custom event
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
@@ -53,8 +53,13 @@ const CommandPalette = memo(function CommandPalette({ userId }: CommandPalettePr
         setOpen(false)
       }
     }
+    const customOpen = () => setOpen(true)
     document.addEventListener('keydown', down)
-    return () => document.removeEventListener('keydown', down)
+    window.addEventListener('open-command-palette', customOpen)
+    return () => {
+      document.removeEventListener('keydown', down)
+      window.removeEventListener('open-command-palette', customOpen)
+    }
   }, [])
 
   // Auto-focus input when opened

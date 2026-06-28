@@ -7,6 +7,7 @@ import { useState, useEffect, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Star, CheckCircle, Zap, Loader2, Sparkles, Target, ListTodo, ShoppingCart, Database } from 'lucide-react'
 import { logDecision, predictNext } from '../hooks/useApi'
+import LiveClock from './LiveClock'
 
 interface LogDecisionPanelProps {
   userId: string
@@ -181,6 +182,7 @@ const LogDecisionPanel = memo(function LogDecisionPanel({ userId, onLogged, tota
           <div className="flex items-start justify-between mb-6 relative z-10">
             <div>
               <h3 className="text-2xl font-black text-white mb-1 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-200 to-white">{getGreeting()}!</h3>
+              <LiveClock className="text-indigo-400 mb-2" />
               <div className="flex items-center gap-3 mt-2">
                 <div className="flex items-center gap-1.5 bg-[#ffffff0a] border border-[#ffffff14] px-2.5 py-1 rounded-md">
                   <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
@@ -232,6 +234,7 @@ const LogDecisionPanel = memo(function LogDecisionPanel({ userId, onLogged, tota
               {[...suggestions].sort((a,b) => (b.confidence||0) - (a.confidence||0)).map((action, i) => (
                 <motion.button
                   key={`${action.domain}-${action.label}`}
+                  type="button"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.1 }}
@@ -327,6 +330,17 @@ const LogDecisionPanel = memo(function LogDecisionPanel({ userId, onLogged, tota
             >
               {logging === 'manual' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Log'}
             </button>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-1">
+            {manualDomain === 'focus' && ['Deep Work', 'Reading', 'Coding', 'Writing'].map(tag => (
+              <button key={tag} type="button" onClick={() => setManualInput(tag)} className="text-[10px] px-2.5 py-1 rounded-full bg-[#ffffff0a] border border-[#ffffff14] text-[#a1a1aa] hover:text-white hover:border-[#ffffff2a] transition-all cursor-pointer">{tag}</button>
+            ))}
+            {manualDomain === 'task' && ['Email', 'Meeting', 'Review', 'Planning'].map(tag => (
+              <button key={tag} type="button" onClick={() => setManualInput(tag)} className="text-[10px] px-2.5 py-1 rounded-full bg-[#ffffff0a] border border-[#ffffff14] text-[#a1a1aa] hover:text-white hover:border-[#ffffff2a] transition-all cursor-pointer">{tag}</button>
+            ))}
+            {manualDomain === 'purchase' && ['Coffee', 'Lunch', 'Groceries', 'Snack', 'None'].map(tag => (
+              <button key={tag} type="button" onClick={() => setManualInput(tag)} className="text-[10px] px-2.5 py-1 rounded-full bg-[#ffffff0a] border border-[#ffffff14] text-[#a1a1aa] hover:text-white hover:border-[#ffffff2a] transition-all cursor-pointer">{tag}</button>
+            ))}
           </div>
 
           <AnimatePresence>

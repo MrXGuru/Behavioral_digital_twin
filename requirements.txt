@@ -13,3 +13,5 @@ httpx
 python-dotenv==1.0.1
 scipy
 statsmodels
+google-auth
+PyJWT

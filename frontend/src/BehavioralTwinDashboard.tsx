@@ -7,9 +7,9 @@
  * a subtle top-bar indicator, preventing any blank-page flash.
  */
 import { useState, useEffect, memo, Component, type ReactNode, type ErrorInfo } from 'react'
-import { motion } from 'framer-motion'
-import { Brain, Loader2, AlertCircle, Download, LogOut, Share2, User, Trash2 } from 'lucide-react'
-import { GoogleLogin } from '@react-oauth/google'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Brain, Loader2, AlertCircle, Download, LogOut, Share2, User, Trash2, Bell, Search, Cloud, CloudLightning, CheckCircle2 } from 'lucide-react'
+import AuthScreen from './components/auth/AuthScreen'
 
 import { useDashboard, API_BASE, deleteTwin } from './hooks/useApi'
 import { useTwinXP } from './hooks/useTwinXP'
@@ -23,11 +23,12 @@ import DriftPanel from './components/DriftPanel'
 import RetrainPanel from './components/RetrainPanel'
 import PredictPanel from './components/PredictPanel'
 import CommandPalette from './components/CommandPalette'
-import HeatmapCalendar from './components/HeatmapCalendar'
+import FocusStreaks from './components/FocusStreaks'
 import IntegrationsPanel from './components/IntegrationsPanel'
 import AIBriefingPanel from './components/AIBriefingPanel'
 import QuickLogFAB from './components/QuickLogFAB'
 import TiltCard from './components/TiltCard'
+import LiveClock from './components/LiveClock'
 
 // ---------------------------------------------------------------------------
 // Error boundary — catches component-level crashes and shows a friendly message
@@ -84,6 +85,7 @@ interface HeaderProps {
 
 const Header = memo(function Header({ userId, onSignOut, connected, refreshing, totalLogs, level }: HeaderProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
   const [userProfile, setUserProfile] = useState<{name?: string, email?: string, picture?: string} | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   
@@ -94,8 +96,23 @@ const Header = memo(function Header({ userId, onSignOut, connected, refreshing, 
     } catch(e){}
   }, [])
 
-  const handleExport = () => {
-    window.location.href = `${API_BASE}/report/${encodeURIComponent(userId)}`
+  const handleExport = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/report/${encodeURIComponent(userId)}`)
+      if (!res.ok) throw new Error('Export failed')
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `weekly_report_${userId}.md`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (e) {
+      alert("Failed to export report")
+      console.error(e)
+    }
   }
 
   const handleResetTwin = async () => {
@@ -115,72 +132,133 @@ const Header = memo(function Header({ userId, onSignOut, connected, refreshing, 
     }
   }
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'My Behavioral Twin',
-          text: `I'm using the AI Behavioral Twin to track my habits and understand my focus patterns!`,
-          url: window.location.href,
-        })
-      } catch (err) {
-        console.log('User canceled share or error occurred.')
-      }
-    } else {
-      alert('Native sharing is not supported on this browser. Copy the URL to share!')
-    }
-  }
-
   return (
     <header 
-      className="sticky top-0 z-50 bg-[#0a0a0a] relative after:absolute after:bottom-0 after:inset-x-0 after:h-[1px] after:bg-gradient-to-r after:from-orange-500/20 after:to-purple-600/20 shadow-[0_4px_30px_rgba(0,0,0,0.5)]"
-      style={{ transform: 'translateZ(10px)' }}
+      className="sticky top-0 z-50 bg-[#0a0a0a]/90 backdrop-blur-xl border-b border-[#ffffff14] shadow-[0_4px_30px_rgba(0,0,0,0.5)]"
     >
       {refreshing && (
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-[#ededed] shimmer" />
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 shimmer z-50" />
       )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center h-14">
+        <div className="flex items-center h-16 gap-4">
           {/* Logo */}
-          <div className="flex items-center gap-3 relative group">
-            <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-purple-600 blur-xl opacity-0 group-hover:opacity-40 transition-opacity duration-700" />
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-purple-600 flex items-center justify-center shadow-lg shadow-rose-500/20 relative z-10">
-              <Brain className="w-4 h-4 text-white animate-breathe" />
+          <div className="flex items-center gap-3 relative group mr-4">
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 blur-xl opacity-0 group-hover:opacity-40 transition-opacity duration-700" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg relative z-10">
+              <Brain className="w-5 h-5 text-white animate-breathe" />
             </div>
-            <div className="relative overflow-hidden z-10">
-              <h1 className="text-lg font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-rose-500 to-purple-600 drop-shadow-md whitespace-nowrap animate-shimmer-sweep">
+            <div className="relative overflow-hidden z-10 hidden sm:block">
+              <h1 className="text-lg font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-600 drop-shadow-md whitespace-nowrap animate-shimmer-sweep">
                 Behavioral Twin
               </h1>
             </div>
           </div>
 
-          {/* Missing Context */}
-          {totalLogs !== undefined && totalLogs > 0 && level !== undefined && (
-            <div className="hidden md:flex items-center ml-4 px-3 py-1 bg-white/5 rounded-full border border-white/10 shadow-inner">
-              <span className="text-xs font-medium text-amber-400 mr-2">🔥 Level {level} Twin</span>
-              <span className="text-xs text-slate-400">{totalLogs} logs</span>
-            </div>
-          )}
-          
-          <div className="flex-1" />
+          {/* Search/Command Palette trigger */}
+          <div className="hidden md:flex flex-1 max-w-sm">
+            <button 
+              type="button" 
+              onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))} 
+              className="w-full flex items-center gap-2 px-4 py-2 bg-[#141414] hover:bg-[#1f1f1f] border border-[#ffffff14] hover:border-[#ffffff2a] rounded-xl text-sm text-[#71717a] transition-all shadow-inner group"
+            >
+              <Search className="w-4 h-4 text-[#a1a1aa] group-hover:text-indigo-400 transition-colors" />
+              <span className="flex-1 text-left">Search or ask AI...</span>
+              <kbd className="hidden lg:inline-block px-1.5 py-0.5 rounded bg-[#27272a] text-[10px] text-[#a1a1aa] border border-[#3f3f46] shadow-sm font-medium">⌘K</kbd>
+            </button>
+          </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button type="button" onClick={handleShare} className="btn-secondary active:scale-95 active:shadow-inner flex items-center gap-2" title="Share your twin">
-              <Share2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Share</span>
-            </button>
-            <button type="button" onClick={handleExport} className="btn-secondary active:scale-95 active:shadow-inner hidden sm:flex items-center gap-2" title="Export Weekly Report">
-              <Download className="w-3.5 h-3.5" />
-              <span>Export</span>
-            </button>
-            
+          <div className="flex-1 flex justify-end md:hidden">
+             <button 
+                type="button" 
+                onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
+                className="w-10 h-10 rounded-full bg-[#141414] border border-[#ffffff14] flex items-center justify-center hover:bg-[#1f1f1f] transition-colors"
+              >
+                <Search className="w-4 h-4 text-[#a1a1aa]" />
+              </button>
+          </div>
+
+          {/* Actions & Status */}
+          <div className="flex items-center gap-3 sm:gap-4 ml-auto">
+            {/* Live Clock */}
+            <div className="hidden lg:flex items-center justify-center px-4 py-1.5 bg-[#141414] border border-[#ffffff14] rounded-xl shadow-inner">
+              <LiveClock className="text-emerald-400 font-mono text-sm tracking-widest drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
+            </div>
+
+            {/* Sync Status Animation */}
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#141414] border border-[#ffffff14] shadow-inner" title={refreshing ? "Syncing..." : connected ? "Connected" : "Offline"}>
+              <AnimatePresence mode="wait">
+                {refreshing ? (
+                  <motion.div key="refresh" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.2 }}>
+                    <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
+                  </motion.div>
+                ) : connected ? (
+                  <motion.div key="connected" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
+                    <Cloud className="w-4 h-4 text-emerald-400" />
+                  </motion.div>
+                ) : (
+                  <motion.div key="offline" initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
+                    <CloudLightning className="w-4 h-4 text-rose-400" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Notifications */}
+            <div className="relative">
+              <button 
+                type="button" 
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative flex items-center justify-center w-10 h-10 rounded-full bg-[#141414] border border-[#ffffff14] hover:bg-[#1f1f1f] transition-colors shadow-inner"
+              >
+                <Bell className="w-4 h-4 text-[#a1a1aa]" />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-[#141414] shadow-[0_0_8px_rgba(244,63,94,0.8)]"></span>
+              </button>
+              
+              <AnimatePresence>
+                {showNotifications && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                      className="absolute right-0 mt-3 w-80 rounded-2xl bg-[#0a0a0a]/90 backdrop-blur-2xl border border-[#ffffff1a] shadow-2xl z-50 p-2 flex flex-col gap-1 overflow-hidden"
+                    >
+                      <div className="px-3 py-3 border-b border-[#ffffff14] mb-2 flex items-center justify-between">
+                        <span className="text-sm font-semibold text-[#ededed]">Notifications</span>
+                        <span className="text-[10px] font-bold bg-indigo-500 text-white px-2 py-0.5 rounded-full">2 New</span>
+                      </div>
+                      <div className="flex items-start gap-3 p-2 hover:bg-[#ffffff0a] rounded-xl transition-colors cursor-pointer group">
+                        <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-500/20 transition-colors">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-[#ededed]">Model Synced</p>
+                          <p className="text-xs text-[#a1a1aa] mt-0.5">Your behavioral twin has processed your recent logs.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 p-2 hover:bg-[#ffffff0a] rounded-xl transition-colors cursor-pointer group">
+                        <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center flex-shrink-0 group-hover:bg-indigo-500/20 transition-colors">
+                          <Brain className="w-5 h-5 text-indigo-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-[#ededed]">New Insight Available</p>
+                          <p className="text-xs text-[#a1a1aa] mt-0.5">We found a new focus pattern related to morning work.</p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
             {/* Profile Dropdown */}
             <div className="relative">
               <button 
                 type="button" 
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="w-8 h-8 rounded-full overflow-hidden border border-[#ffffff14] hover:border-[#ffffff2a] transition-colors focus:outline-none bg-[#141414] flex items-center justify-center active:scale-95 ring-2 ring-purple-500 ring-offset-2 ring-offset-[#141414] animate-[pulse_2s_ease-in-out_infinite]"
+                className="w-10 h-10 rounded-full overflow-hidden border border-[#ffffff14] hover:border-indigo-500/50 transition-colors focus:outline-none bg-[#141414] flex items-center justify-center active:scale-95"
                 title="View Profile"
               >
                 {userProfile?.picture ? (
@@ -192,43 +270,47 @@ const Header = memo(function Header({ userId, onSignOut, connected, refreshing, 
                 )}
               </button>
               
-              {showProfileMenu && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
-                  <div className="absolute right-0 mt-2 w-56 rounded-xl bg-[#141414] border border-[#ffffff1a] shadow-2xl z-50 p-1 flex flex-col gap-1 overflow-hidden">
-                    <div className="px-3 py-3 border-b border-[#ffffff1a] mb-1">
-                      <p className="text-sm font-medium text-[#ededed] truncate">{userProfile?.name || 'User'}</p>
-                      <p className="text-xs text-[#a1a1aa] truncate">{userProfile?.email || userId}</p>
-                    </div>
-                    <button type="button" onClick={handleResetTwin} disabled={isDeleting} className="w-full text-left px-3 py-2 text-sm text-rose-400 hover:bg-[#ffffff0a] rounded-lg flex items-center gap-2 transition-colors">
-                      {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                      Factory Reset
-                    </button>
-                    <button type="button" onClick={onSignOut} className="w-full text-left px-3 py-2 text-sm text-slate-400 hover:bg-[#ffffff0a] rounded-lg flex items-center gap-2 transition-colors">
-                      <LogOut className="w-4 h-4" />
-                      Sign out
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+              <AnimatePresence>
+                {showProfileMenu && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                      className="absolute right-0 mt-3 w-64 rounded-2xl bg-[#0a0a0a]/90 backdrop-blur-2xl border border-[#ffffff1a] shadow-2xl z-50 p-2 flex flex-col gap-1 overflow-hidden"
+                    >
+                      <div className="px-3 py-3 border-b border-[#ffffff14] mb-2">
+                        <p className="text-sm font-medium text-[#ededed] truncate">{userProfile?.name || 'User'}</p>
+                        <p className="text-xs text-[#a1a1aa] truncate">{userProfile?.email || userId}</p>
+                      </div>
+                      
+                      {totalLogs !== undefined && level !== undefined && (
+                        <div className="md:hidden px-3 py-2 mb-1 flex items-center justify-between bg-indigo-500/10 rounded-lg">
+                          <span className="text-xs font-medium text-indigo-400">Level {level} Twin</span>
+                          <span className="text-[10px] text-indigo-300">{totalLogs} logs</span>
+                        </div>
+                      )}
 
-          {/* Status */}
-          <div className="hidden sm:flex items-center gap-2 ml-4" title={connected ? "Connected — last synced just now" : "Disconnected"}>
-            {refreshing ? (
-              <span className="flex items-center gap-1.5 text-xs text-[#a1a1aa]">
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" /> Syncing...
-              </span>
-            ) : connected ? (
-              <span className="flex items-center gap-1.5 text-xs text-[#a1a1aa]">
-                <div className="w-1.5 h-1.5 rounded-full animate-pulse-glow-green" /> Connected
-              </span>
-            ) : (
-              <span className="flex items-center gap-1.5 text-xs text-[#71717a]">
-                <div className="w-1.5 h-1.5 rounded-full animate-pulse-glow-red" /> Offline
-              </span>
-            )}
+                      <button type="button" onClick={handleExport} className="w-full text-left px-3 py-2.5 text-sm text-[#ededed] hover:bg-[#ffffff0a] rounded-xl flex items-center gap-3 transition-colors">
+                        <Download className="w-4 h-4 text-[#a1a1aa]" />
+                        Export Report
+                      </button>
+                      <button type="button" onClick={handleResetTwin} disabled={isDeleting} className="w-full text-left px-3 py-2.5 text-sm text-rose-400 hover:bg-[#ffffff0a] rounded-xl flex items-center gap-3 transition-colors">
+                        {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4 text-rose-500" />}
+                        Factory Reset
+                      </button>
+                      <div className="h-[1px] bg-[#ffffff14] my-1" />
+                      <button type="button" onClick={onSignOut} className="w-full text-left px-3 py-2.5 text-sm text-[#ededed] hover:bg-[#ffffff0a] rounded-xl flex items-center gap-3 transition-colors">
+                        <LogOut className="w-4 h-4 text-[#a1a1aa]" />
+                        Sign out
+                      </button>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </div>
@@ -267,25 +349,30 @@ const DashboardBody = memo(function DashboardBody({ userId, data, refetch, xp, l
         </TiltCard>
       )}
 
-      {/* Top row: Heatmap + Log Decision + Stats/Actions */}
+      {/* Activity Gamified Centerpiece */}
+      <ErrorBoundary>
+        <TiltCard intensity={3}>
+          <FocusStreaks 
+            heatmap={data?.heatmap || []} 
+            xp={xp}
+            level={level}
+            totalLogs={data?.decisions?.length || 0}
+          />
+        </TiltCard>
+      </ErrorBoundary>
+
+      {/* Top row: Log Decision + Stats/Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="flex flex-col gap-6">
           <ErrorBoundary>
-            <TiltCard intensity={5}>
-              <HeatmapCalendar heatmap={data?.heatmap || []} />
-            </TiltCard>
-          </ErrorBoundary>
-          <ErrorBoundary>
-            <TiltCard intensity={8}>
-              <LogDecisionPanel 
-                userId={userId} 
-                onLogged={refetch} 
-                totalLogs={data?.decisions?.length || 0}
-                xp={xp}
-                level={level}
-                addXp={addXp}
-              />
-            </TiltCard>
+            <LogDecisionPanel 
+              userId={userId} 
+              onLogged={refetch} 
+              totalLogs={data?.decisions?.length || 0}
+              xp={xp}
+              level={level}
+              addXp={addXp}
+            />
           </ErrorBoundary>
         </div>
 
@@ -352,122 +439,6 @@ const DashboardBody = memo(function DashboardBody({ userId, data, refetch, xp, l
 })
 
 // ---------------------------------------------------------------------------
-// Auth Screen
-// ---------------------------------------------------------------------------
-
-interface AuthScreenProps {
-  onLogin: (userId: string) => void
-}
-
-function AuthScreen({ onLogin }: AuthScreenProps) {
-  const [errorMsg, setErrorMsg] = useState('')
-
-  const handleGoogleSuccess = async (credentialResponse: any) => {
-    try {
-      const res = await fetch(`http://localhost:8000/auth/google`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: credentialResponse.credential }),
-      })
-      if (!res.ok) throw new Error('Failed to verify Google token')
-      const data = await res.json()
-      
-      if (data.access_token) {
-        localStorage.setItem('access_token', data.access_token)
-        localStorage.setItem('user_profile', JSON.stringify(data.user))
-      }
-      onLogin(data.user.email)
-    } catch (err) {
-      console.error(err)
-      setErrorMsg('Google login was unsuccessful.')
-    }
-  }
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.15,
-        delayChildren: 0.1
-      }
-    }
-  }
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
-  }
-
-  return (
-    <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden bg-[#000000]">
-      {/* Dynamic Background Effects */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-600/20 rounded-full blur-[120px] mix-blend-screen animate-pulse" style={{ animationDuration: '4s' }} />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-600/20 rounded-full blur-[120px] mix-blend-screen animate-pulse" style={{ animationDuration: '6s', animationDelay: '1s' }} />
-        <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-purple-600/20 rounded-full blur-[100px] mix-blend-screen animate-pulse" style={{ animationDuration: '5s', animationDelay: '2s' }} />
-      </div>
-
-      <motion.div 
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="w-full max-w-md relative z-10"
-      >
-        <div className="backdrop-blur-2xl bg-[#0a0a0a]/60 border border-[#ffffff1a] rounded-[24px] p-8 shadow-2xl relative overflow-hidden">
-          {/* Subtle inner top highlight */}
-          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#ffffff33] to-transparent" />
-          
-          <div className="flex flex-col items-center mb-8 relative">
-            <motion.div variants={itemVariants} className="relative mb-6 group">
-              <div className="absolute inset-0 bg-indigo-500/30 blur-xl rounded-full group-hover:bg-indigo-400/40 transition-colors duration-500" />
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-b from-[#1f1f1f] to-[#0a0a0a] border border-[#ffffff2a] flex items-center justify-center shadow-2xl relative z-10 transform group-hover:scale-105 transition-transform duration-500">
-                <Brain className="w-8 h-8 text-indigo-400 drop-shadow-[0_0_8px_rgba(129,140,248,0.5)]" />
-              </div>
-            </motion.div>
-            
-            <motion.h1 variants={itemVariants} className="text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white to-[#a1a1aa] mb-3 text-center">
-              Behavioral Twin
-            </motion.h1>
-            <motion.p variants={itemVariants} className="text-sm text-[#a1a1aa] text-center leading-relaxed max-w-[280px]">
-              Sign in with Google to start tracking your digital twin and optimizing your daily habits.
-            </motion.p>
-          </div>
-
-          <motion.div variants={itemVariants} className="flex flex-col items-center justify-center gap-4 w-full">
-            <div className="w-full flex justify-center p-1 rounded-xl bg-gradient-to-b from-[#1a1a1a] to-[#0a0a0a] border border-[#ffffff0f] hover:border-[#ffffff1a] transition-colors shadow-inner">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={() => setErrorMsg('Google login was unsuccessful.')}
-                theme="filled_black"
-                shape="pill"
-                size="large"
-                text="continue_with"
-                width="280"
-              />
-            </div>
-            
-            {errorMsg && (
-              <motion.p 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="text-xs text-rose-400 mt-1 bg-rose-500/10 px-3 py-2 rounded-lg border border-rose-500/20 text-center"
-              >
-                {errorMsg}
-              </motion.p>
-            )}
-          </motion.div>
-          
-          <motion.p variants={itemVariants} className="mt-8 text-[10px] text-[#71717a] text-center px-4">
-            By continuing, you agree to the Terms of Service and Privacy Policy. Secure authentication provided by Google OAuth.
-          </motion.p>
-        </div>
-      </motion.div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
 // Root component
 // ---------------------------------------------------------------------------
 
@@ -491,12 +462,15 @@ export default function BehavioralTwinDashboard() {
     setUserId(null)
   }
 
-  // If no user is logged in, show Auth
-  if (!userId) {
-    return <AuthScreen onLogin={handleLogin} />
-  }
-
-  return <DashboardContainer userId={userId} onSignOut={handleSignOut} />
+  return (
+    <AnimatePresence mode="wait">
+      {!userId ? (
+        <AuthScreen key="auth" onLogin={handleLogin} />
+      ) : (
+        <DashboardContainer key="dash" userId={userId} onSignOut={handleSignOut} />
+      )}
+    </AnimatePresence>
+  )
 }
 
 function DashboardContainer({ userId, onSignOut }: { userId: string, onSignOut: () => void }) {
@@ -515,7 +489,10 @@ function DashboardContainer({ userId, onSignOut }: { userId: string, onSignOut: 
         level={level}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+      <motion.main 
+        layoutId="app-card"
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 relative z-10"
+      >
         {/* Full-screen spinner only on initial load for a userId */}
         {loading && !data && (
           <div className="flex flex-col items-center justify-center py-32">
@@ -552,7 +529,7 @@ function DashboardContainer({ userId, onSignOut }: { userId: string, onSignOut: 
             <QuickLogFAB userId={userId} onLog={refetch} addXp={addXp} />
           </ErrorBoundary>
         )}
-      </main>
+      </motion.main>
     </div>
   )
 }

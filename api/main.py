@@ -786,8 +786,17 @@ def verify_google_auth(req: GoogleAuthRequest):
     JWT_SECRET = os.environ.get("JWT_SECRET_KEY", "super-secret-twin-key-override-me")
 
     try:
-        # 3. Verify the token using Google's public keys
-        idinfo = id_token.verify_oauth2_token(req.token, google_requests.Request(), CLIENT_ID)
+        import requests
+        # 3. Check if token is an access_token or an id_token
+        # Access tokens usually start with 'ya29.'
+        if req.token.startswith("ya29."):
+            resp = requests.get('https://www.googleapis.com/oauth2/v3/userinfo', headers={'Authorization': f'Bearer {req.token}'})
+            if not resp.ok:
+                raise ValueError(f"Invalid access token: {resp.text}")
+            idinfo = resp.json()
+        else:
+            # Verify the token using Google's public keys (id_token flow)
+            idinfo = id_token.verify_oauth2_token(req.token, google_requests.Request(), CLIENT_ID)
         
         # 4. Extract email, name, picture, sub
         email = idinfo.get("email")
